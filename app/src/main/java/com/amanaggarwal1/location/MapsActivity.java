@@ -1,4 +1,4 @@
-package com.amanaggarwal1.mapdemo;
+package com.amanaggarwal1.location;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -12,6 +12,8 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
+
+import com.amanaggarwal1.mapdemo.R;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -23,12 +25,10 @@ import static com.google.android.gms.maps.model.BitmapDescriptorFactory.*;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
-    private LocationManager locationManager;
-    private LocationListener locationListener;
-    private SupportMapFragment mapFragment;
-
     private static final int MIN_REQUEST_TIME = 0;
-    private static final int MIN_REQUEST_DISTANCE = 0;
+    private static final int MIN_REQUEST_DISTANCE = 1;
+
+    private  SupportMapFragment mapFragment;
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -36,16 +36,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         boolean isPermissionGranted = false;
         for (int i : grantResults)
-            if (i == PackageManager.PERMISSION_GRANTED)
+            if (i == PackageManager.PERMISSION_GRANTED) {
                 isPermissionGranted = true;
+                break;
+            }
 
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            if (isPermissionGranted)
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+            if (isPermissionGranted) {
                 Log.d("LOGCAT", "permission granted");
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
+                mapFragment.getMapAsync(this);
+            }
         }
     }
 
@@ -53,9 +56,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(final GoogleMap googleMap) {
         googleMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
-        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
 
-        locationListener = new LocationListener() {
+        LocationListener locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
                 Log.i("LOGCAT", "onLocationChanged called, lat = " +
@@ -90,12 +93,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-        } else {
+        }else {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,  MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
         }
-
     }
+
 
 
     @Override
@@ -103,15 +106,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
+
         mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-        }
     }
 
 }
