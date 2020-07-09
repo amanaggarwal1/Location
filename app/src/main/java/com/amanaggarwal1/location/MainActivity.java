@@ -9,7 +9,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
-import com.amanaggarwal1.mapdemo.R;
+import com.amanaggarwal1.location.R;
 
 import java.util.ArrayList;
 import java.util.List;

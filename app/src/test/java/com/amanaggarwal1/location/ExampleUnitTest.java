@@ -1,4 +1,4 @@
-package com.amanaggarwal1.mapdemo;
+package com.amanaggarwal1.location;
 
 import org.junit.Test;
 
