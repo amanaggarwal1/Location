@@ -6,7 +6,10 @@ import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -19,14 +22,21 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
 import static com.google.android.gms.maps.model.BitmapDescriptorFactory.*;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
+public class MapsActivity extends FragmentActivity implements
+        OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
 
     private static final int MIN_REQUEST_TIME = 5000;
     private static final int MIN_REQUEST_DISTANCE = 0;
@@ -35,12 +45,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private GoogleMap myMap;
     private LocationListener locationListener;
 
-    private void addMarkerOnMap(LatLng latLng){
+    private void addMarkerOnMap(Location location, String title, float markerColor){
 
+        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
         //myMap.clear();
-        MarkerOptions markerOptions = new MarkerOptions().position(latLng).title("You are here");
+        MarkerOptions markerOptions = new MarkerOptions()
+                .position(latLng)
+                .title("You are here")
+                .icon(BitmapDescriptorFactory.defaultMarker(markerColor));
         myMap.addMarker (markerOptions);
-        myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12));
+        myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14));
     }
 
     private void setupOnLocationListener(final GoogleMap myMap){
@@ -51,8 +65,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         location.getLatitude() + " long = " + location.getLongitude() +
                         " accuracy = " + location.getAccuracy() + " alt = " + location.getAltitude());
 
-                LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                addMarkerOnMap(latLng);
+                addMarkerOnMap(location, "You are here", HUE_RED);
             }
 
             @Override
@@ -76,11 +89,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(
+            int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.d("LOGCAT", "permission granted");
                 mapFragment.getMapAsync(this);
@@ -100,12 +116,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         setupOnLocationListener(myMap);
 
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+
         }else {
             assert locationManager != null;
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                    MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+                    MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
+
         }
     }
 
@@ -117,6 +142,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         setContentView(R.layout.activity_maps);
 
         mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        assert mapFragment != null;
         mapFragment.getMapAsync(this);
 
     }
@@ -124,14 +150,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapLongClick(LatLng point) {
 
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        String address = "";
+
+        try{
+            List<Address> addressesList = geocoder.getFromLocation(point.latitude, point.longitude, 1);
+            address += addressesList.get(0).getAddressLine(0);
+        }catch (Exception e){
+            Log.d("LOGCAT", e.getMessage());
+        }
+
+        if(address.isEmpty()) {
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm dd/MM/yyyy");
+            address += simpleDateFormat.format(new Date());
+        }
+
         myMap.addMarker(new MarkerOptions()
                 .position(point)
-                .title(point.toString())
+                .title(address)
                 .icon(BitmapDescriptorFactory.defaultMarker(HUE_CYAN)));
-
-        Toast.makeText(getApplicationContext(),
-                "New marker added@" + point.toString(), Toast.LENGTH_LONG)
-                .show();
 
     }
 
