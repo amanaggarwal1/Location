@@ -5,6 +5,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -39,15 +40,34 @@ public class MapsActivity extends FragmentActivity implements
 
     private  SupportMapFragment mapFragment;
     private GoogleMap myMap;
+    private LocationManager locationManager;
     private LocationListener locationListener;
 
-    private void addMarkerOnMap(Location location, String title, float markerColor){
+    private String getAddressForLocation(LatLng point){
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        String address = "";
 
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+        try{
+            List<Address> addressesList = geocoder.getFromLocation(point.latitude, point.longitude, 1);
+            address += addressesList.get(0).getAddressLine(0);
+        }catch (Exception e){
+            Log.d("LOGCAT", e.getMessage());
+        }
+
+        if(address.isEmpty()) {
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm dd/MM/yyyy");
+            address += simpleDateFormat.format(new Date());
+        }
+
+        return address;
+    }
+
+    private void addMarkerOnMap(LatLng latLng, String title, float markerColor){
+
         //myMap.clear();
         MarkerOptions markerOptions = new MarkerOptions()
                 .position(latLng)
-                .title("You are here")
+                .title(title)
                 .icon(BitmapDescriptorFactory.defaultMarker(markerColor));
         myMap.addMarker (markerOptions);
         myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14));
@@ -61,7 +81,8 @@ public class MapsActivity extends FragmentActivity implements
                         location.getLatitude() + " long = " + location.getLongitude() +
                         " accuracy = " + location.getAccuracy() + " alt = " + location.getAltitude());
 
-                addMarkerOnMap(location, "You are here", HUE_RED);
+                LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                addMarkerOnMap(latLng, "You are here", HUE_RED);
             }
 
             @Override
@@ -82,6 +103,25 @@ public class MapsActivity extends FragmentActivity implements
                         Toast.LENGTH_SHORT).show();
             }
         };
+    }
+
+    private void requestUserLocation(){
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+
+        } else {
+            assert locationManager != null;
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                    MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+                    MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
+
+        }
     }
 
     @Override
@@ -108,25 +148,18 @@ public class MapsActivity extends FragmentActivity implements
         myMap.setOnMapLongClickListener(this);
         myMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
 
-        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         setupOnLocationListener(myMap);
 
+        Intent intent = getIntent();
+        int locationNumberToVisit = intent.getIntExtra("locationNumber", 0);
 
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this,
-                        Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-
-        }else {
-            assert locationManager != null;
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-                    MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
-                    MIN_REQUEST_TIME, MIN_REQUEST_DISTANCE, locationListener);
-
+        if(locationNumberToVisit == 0) {
+            requestUserLocation();
+        }else{
+            LatLng placeToVisit = MainActivity.latLngList.get(locationNumberToVisit);
+            String title = MainActivity.placesList.get(locationNumberToVisit);
+            addMarkerOnMap(placeToVisit, title, HUE_CYAN);
         }
     }
 
@@ -146,25 +179,18 @@ public class MapsActivity extends FragmentActivity implements
     @Override
     public void onMapLongClick(LatLng point) {
 
-        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-        String address = "";
-
-        try{
-            List<Address> addressesList = geocoder.getFromLocation(point.latitude, point.longitude, 1);
-            address += addressesList.get(0).getAddressLine(0);
-        }catch (Exception e){
-            Log.d("LOGCAT", e.getMessage());
-        }
-
-        if(address.isEmpty()) {
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm dd/MM/yyyy");
-            address += simpleDateFormat.format(new Date());
-        }
+        String address = getAddressForLocation(point);
 
         myMap.addMarker(new MarkerOptions()
                 .position(point)
                 .title(address)
                 .icon(BitmapDescriptorFactory.defaultMarker(HUE_CYAN)));
+
+        MainActivity.placesList.add(address);
+        MainActivity.latLngList.add(point);
+        MainActivity.arrayAdapter.notifyDataSetChanged();
+
+        Toast.makeText(this, "Location saved", Toast.LENGTH_SHORT).show();
 
     }
 
