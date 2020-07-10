@@ -6,6 +6,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -25,7 +26,9 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.io.Serializable;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -186,12 +189,32 @@ public class MapsActivity extends FragmentActivity implements
                 .title(address)
                 .icon(BitmapDescriptorFactory.defaultMarker(HUE_CYAN)));
 
+        Toast.makeText(this, "Location saved", Toast.LENGTH_SHORT).show();
+
         MainActivity.placesList.add(address);
         MainActivity.latLngList.add(point);
         MainActivity.arrayAdapter.notifyDataSetChanged();
 
-        Toast.makeText(this, "Location saved", Toast.LENGTH_SHORT).show();
+        SharedPreferences sharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
 
+
+
+        try {
+            ArrayList<String> latitudes = new ArrayList<>();
+            ArrayList<String> longitudes = new ArrayList<>();
+
+            for (LatLng coord : MainActivity.latLngList) {
+                latitudes.add(Double.toString(coord.latitude));
+                longitudes.add(Double.toString(coord.longitude));
+            }
+
+            sharedPreferences.edit().putString("places", ObjectSerializer.serialize((Serializable) MainActivity.placesList)).apply();
+            sharedPreferences.edit().putString("lats", ObjectSerializer.serialize(latitudes)).apply();
+            sharedPreferences.edit().putString("lons", ObjectSerializer.serialize(longitudes)).apply();
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
-
 }
